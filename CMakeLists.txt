@@ -728,6 +728,7 @@ mark_as_advanced(BUILD_OSG_PLUGINS)
 # 3rd Party Dependency Stuff
 IF(WIN32 AND NOT ANDROID)
     INCLUDE(Find3rdPartyDependencies)
+    message(STATUS "Find3rdPartyDependencies设置文件目录:---${ACTUAL_3RDPARTY_DIR}" ) 
 ENDIF()
 
 OPTION(OSG_USE_LOCAL_LUA_SOURCE "Enable to use local Lua source when building the lua plugin" ON)

@@ -97,23 +97,45 @@ SET(FFMPEG_ROOT "$ENV{FFMPEG_DIR}" CACHE PATH "Location of FFMPEG")
 
 # find stdint.h
 IF(MSVC)
-
-    FIND_PATH(FFMPEG_STDINT_INCLUDE_DIR stdint.h
-        PATHS
-        ${FFMPEG_ROOT}/include
-        $ENV{FFMPEG_DIR}/include
-        ~/Library/Frameworks
-        /Library/Frameworks
-        /usr/local/include
-        /usr/include
-        /sw/include # Fink
-        /opt/local/include # DarwinPorts
-        /opt/csw/include # Blastwave
-        /opt/include
-        /usr/freeware/include
-        PATH_SUFFIXES ffmpeg
-        DOC "Location of FFMPEG stdint.h Header"
-    )
+   #C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include
+     # if(MSVC_VERSION EQUAL 1400)
+        # set(OpenCV_RUNTIME vc8)
+      # elseif(MSVC_VERSION EQUAL 1500)
+        # set(OpenCV_RUNTIME vc9)
+      # elseif(MSVC_VERSION EQUAL 1600)
+        # set(OpenCV_RUNTIME vc10)
+      # elseif(MSVC_VERSION EQUAL 1700)
+        # set(OpenCV_RUNTIME vc11)
+      # elseif(MSVC_VERSION EQUAL 1800)
+        # set(OpenCV_RUNTIME vc12)
+      # elseif(MSVC_VERSION EQUAL 1900)
+        # set(OpenCV_RUNTIME vc14)
+      # elseif(MSVC_VERSION EQUAL 1910 OR MSVC_VERSION EQUAL 1911)
+        # set(OpenCV_RUNTIME vc15)
+      # else()
+        # message(WARNING "OpenCV does not recognize MSVC_VERSION \"${MSVC_VERSION}\". Cannot set OpenCV_RUNTIME")
+      # endif()
+    message(STATUS "MSVC_VERSION:${MSVC_VERSION}")
+    if(MSVC_VERSION EQUAL 1910 OR MSVC_VERSION EQUAL 1911 OR MSVC_VERSION EQUAL 1900)
+        message(STATUS "ffmpeg不需要重新指认stdint.h" ) 
+    else()
+        FIND_PATH(FFMPEG_STDINT_INCLUDE_DIR stdint.h
+            PATHS
+            ${FFMPEG_ROOT}/include
+            $ENV{FFMPEG_DIR}/include
+            ~/Library/Frameworks
+            /Library/Frameworks
+            /usr/local/include
+            /usr/include
+            /sw/include # Fink
+            /opt/local/include # DarwinPorts
+            /opt/csw/include # Blastwave
+            /opt/include
+            /usr/freeware/include
+            PATH_SUFFIXES ffmpeg
+            DOC "Location of FFMPEG stdint.h Header"
+        )
+    endif()
 
     IF (FFMPEG_STDINT_INCLUDE_DIR)
         SET(STDINT_OK TRUE)
