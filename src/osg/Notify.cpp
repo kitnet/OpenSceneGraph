@@ -12,7 +12,7 @@
 */
 #include <osg/Notify>
 #include <osg/ApplicationUsage>
-#include <osg/EnvVar>
+#include <osg/os_utils>
 #include <osg/ref_ptr>
 #include <string>
 #include <stdlib.h>
@@ -250,6 +250,8 @@ void osg::StandardNotifyHandler::notify(osg::NotifySeverity severity, const char
 
 void osg::WinDebugNotifyHandler::notify(osg::NotifySeverity severity, const char *message)
 {
+    OSG_UNUSED(severity);
+
     OutputDebugStringA(message);
 }
 

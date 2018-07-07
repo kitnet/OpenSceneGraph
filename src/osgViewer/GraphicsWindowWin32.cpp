@@ -23,7 +23,7 @@
 #include <osg/GL>
 #include <osg/DeleteHandler>
 #include <osg/ApplicationUsage>
-#include <osg/EnvVar>
+#include <osg/os_utils>
 
 #include <vector>
 #include <map>
@@ -32,7 +32,8 @@
 
 #define MOUSEEVENTF_FROMTOUCH           0xFF515700
 
-#if(WINVER < 0x0601)
+// _MSC_VER 1500: VS 2008
+#if(WINVER < 0x0601 || (_MSC_VER <= 1500 && !__MINGW32__))
 // Provide Declarations for Multitouch
 
 #define WM_TOUCH                        0x0240
@@ -84,7 +85,9 @@ typedef TOUCHINPUT const * PCTOUCHINPUT;
 // provide declaration for WM_POINTER* events
 // which handle both touch and pen events
 // for Windows 8 and above
-#if(WINVER < 0x0602)
+
+// _MSC_VER 1600: VS 2010
+#if(WINVER < 0x0602 || (_MSC_VER <= 1600 && !__MINGW32__))
 
 #define WM_POINTERUPDATE                0x0245
 #define WM_POINTERDOWN                  0x0246
@@ -96,9 +99,9 @@ enum tagPOINTER_INPUT_TYPE {
    PT_TOUCH = 0x00000002,   // Touch
    PT_PEN = 0x00000003,   // Pen
    PT_MOUSE = 0x00000004,   // Mouse
-#if(WINVER >= 0x0603)
+//#if(WINVER >= 0x0603)
    PT_TOUCHPAD = 0x00000005,   // Touchpad
-#endif /* WINVER >= 0x0603 */
+//#endif /* WINVER >= 0x0603 */
 };
 typedef DWORD POINTER_INPUT_TYPE;
 
@@ -144,6 +147,26 @@ static CloseTouchInputHandleFunc *closeTouchInputHandleFunc = NULL;
 static GetTouchInputInfoFunc *getTouchInputInfoFunc = NULL;
 static GetPointerTypeFunc *getPointerTypeFunc = NULL;
 
+// DPI Awareness
+// #if(WINVER >= 0x0603)
+
+#ifndef DPI_ENUMS_DECLARED
+
+typedef enum PROCESS_DPI_AWARENESS {
+	PROCESS_DPI_UNAWARE = 0,
+	PROCESS_SYSTEM_DPI_AWARE = 1,
+	PROCESS_PER_MONITOR_DPI_AWARE = 2
+} PROCESS_DPI_AWARENESS;
+
+#endif // DPI_ENUMS_DECLARED
+
+typedef
+BOOL
+(WINAPI	SetProcessDpiAwarenessFunc(
+	PROCESS_DPI_AWARENESS dpi_awareness));
+
+static SetProcessDpiAwarenessFunc *setProcessDpiAwareness = NULL;
+// #endif
 
 
 
@@ -765,6 +788,21 @@ Win32WindowingSystem::Win32WindowingSystem()
             FreeLibrary( hModule);
         }
     }
+
+
+// #if(WINVER >= 0x0603)
+	// For Windows 8.1 and higher
+	//
+	// Per monitor DPI aware.This app checks for the DPI when it is created and adjusts the scale factor
+	// whenever the DPI changes.These applications are not automatically scaled by the system.
+	HMODULE hModuleShore = LoadLibrary("Shcore");
+	if (hModuleShore) {
+		setProcessDpiAwareness = (SetProcessDpiAwarenessFunc *) GetProcAddress(hModuleShore, "SetProcessDpiAwareness");
+		if (setProcessDpiAwareness) {
+			(*setProcessDpiAwareness)(PROCESS_DPI_AWARENESS::PROCESS_PER_MONITOR_DPI_AWARE);
+		}
+	}
+// #endif
 }
 
 Win32WindowingSystem::~Win32WindowingSystem()
@@ -1974,7 +2012,7 @@ bool GraphicsWindowWin32::setWindowDecorationImplementation( bool decorated )
     error  = ::GetLastError();
     if (result==0 && error)
     {
-        reportErrorForScreen("GraphicsWindowWin32::setWindowDecoration() - Unable to set window extented style", _traits->screenNum, error);
+        reportErrorForScreen("GraphicsWindowWin32::setWindowDecoration() - Unable to set window extended style", _traits->screenNum, error);
         return false;
     }
 
@@ -2787,7 +2825,7 @@ LRESULT GraphicsWindowWin32::handleNativeWindowingEvent( HWND hwnd, UINT uMsg, W
             {
                 // Wojciech Lewandowski: 2011/09/12
                 // Skip CONTROL | MENU | SHIFT tests because we are polling exact left or right keys
-                // above return press for both right and left so we may end up with incosistent
+                // above return press for both right and left so we may end up with inconsistent
                 // modifier mask if we report left control & right control while only right was pressed
                 LONG rightSideCode = 0;
                 switch( i )
@@ -3109,15 +3147,9 @@ static RegisterWindowingSystemInterfaceProxy createWindowingSystemInterfaceProxy
 
 } // namespace OsgViewer
 
-#if 1
-REGISTER_WINDOWINGSYSTEMINTERFACE(Win32, Win32WindowingSystem)
-#else
-// declare C entry point for static compilation.
-extern "C" void OSGVIEWER_EXPORT graphicswindow_Win32(void)
-{
-    osg::GraphicsContext::setWindowingSystemInterface(osgViewer::Win32WindowingSystem::getInterface());
-}
-#endif
+
+extern "C" OSGVIEWER_EXPORT void graphicswindow_Win32(void) {}
+static osg::WindowingSystemInterfaceProxy<Win32WindowingSystem> s_proxy_Win32WindowingSystem("Win32");
 
 void GraphicsWindowWin32::raiseWindow()
 {

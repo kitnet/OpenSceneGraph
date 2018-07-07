@@ -25,7 +25,7 @@
 #include <osg/TexMat>
 #include <osg/Texture2D>
 #include <osg/TextureRectangle>
-#include <osg/EnvVar>
+#include <osg/os_utils>
 #include <osg/io_utils>
 
 #include <osgViewer/Viewer>
@@ -488,7 +488,7 @@ bool RecordCameraPathHandler::handle(const osgGA::GUIEventAdapter &ea, osgGA::GU
                         OSG_NOTICE << "Recording camera path to file " << ss.str() << std::endl;
                         _fout.open( ss.str().c_str() );
 
-                        // make sure doubles are not trucated by default stream precision = 6
+                        // make sure doubles are not truncated by default stream precision = 6
                         _fout.precision( 15 );
                     }
                     else

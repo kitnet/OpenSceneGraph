@@ -73,7 +73,7 @@ public:
      * placing text against noisy backgrounds.
      * The color of the background shadow text is specified by setBackdropColor().
      * DROP_SHADOW_BOTTOM_RIGHT will draw backdrop text to the right and down of
-     * the normal text. Other DROW_SHADOW_* modes do the same for their repective directions.
+     * the normal text. Other DROP_SHADOW_* modes do the same for their respective directions.
      * OUTLINE will draw backdrop text so that it appears the text has an outline
      * or border around the normal text. This mode is particularly useful against
      * really noisy backgrounds that may put text on top of things that have
@@ -182,8 +182,12 @@ public:
     virtual void accept(osg::PrimitiveFunctor& pf) const;
 
 
+    /** Get the coordinates of the character corners in local coordinates. Use Text::getMatrix() or Text::computeMatrix(..) to get the transform into model coordinates (see TextBase header.) */
+    bool getCharacterCorners(unsigned int index, osg::Vec3& bottomLeft, osg::Vec3& bottomRight, osg::Vec3& topLeft, osg::Vec3& topRight) const;
+
     /** Resize any per context GLObject buffers to specified size. */
     virtual void resizeGLObjectBuffers(unsigned int maxSize);
+
 
     /** If State is non-zero, this function releases OpenGL objects for
       * the specified graphics context. Otherwise, releases OpenGL objexts
@@ -277,9 +281,6 @@ protected:
     bool computeAverageGlyphWidthAndHeight(float& avg_width, float& avg_height) const;
 
     virtual void computePositionsImplementation();
-
-    void computeBackdropBoundingBox();
-    void computeBoundingBoxMargin();
 
     void computeColorGradients();
     void computeColorGradientsOverall();

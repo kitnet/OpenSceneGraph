@@ -160,7 +160,6 @@ void TextureBuffer::apply(State& state) const
 #endif
     if (textureObject)
     {
-        const GLExtensions* extensions = state.get<GLExtensions>();
         if(_bufferData.valid() &&_modifiedCount[contextID]!=_bufferData->getModifiedCount() )
         {
             _modifiedCount[contextID]=_bufferData->getModifiedCount() ;
@@ -177,19 +176,7 @@ void TextureBuffer::apply(State& state) const
             }
 
         }
-        textureObject->bind();
-
-        if( getTextureParameterDirty(contextID) )
-        {
-            if( extensions->isBindImageTextureSupported() && _imageAttachment.access!=0 )
-            {
-                extensions->glBindImageTexture(
-                    _imageAttachment.unit, textureObject->id(), _imageAttachment.level,
-                    _imageAttachment.layered, _imageAttachment.layer, _imageAttachment.access,
-                    _imageAttachment.format!=0 ? _imageAttachment.format : _internalFormat);
-            }
-            getTextureParameterDirty(state.getContextID()) = false;
-        }
+        textureObject->bind(state);
     }
     else if (_bufferData.valid()  &&_bufferData->getBufferObject()  )//&& _bufferObject->getNumBufferData()>0 )
     {
@@ -203,15 +190,8 @@ void TextureBuffer::apply(State& state) const
 
             textureObject = generateAndAssignTextureObject(contextID, GL_TEXTURE_BUFFER);
             textureObject->_profile._internalFormat=_internalFormat;
-            textureObject->bind();
+            textureObject->bind(state);
 
-            if ( extensions->isBindImageTextureSupported() && _imageAttachment.access!=0 )
-            {
-                extensions->glBindImageTexture(
-                    _imageAttachment.unit, textureObject->id(), _imageAttachment.level,
-                    _imageAttachment.layered, _imageAttachment.layer, _imageAttachment.access,
-                    _imageAttachment.format!=0 ? _imageAttachment.format : _internalFormat);
-            }
             getTextureParameterDirty(state.getContextID()) = false;
 
             computeInternalFormat();
@@ -222,7 +202,7 @@ void TextureBuffer::apply(State& state) const
             textureObject->setAllocated(true);
             extensions->glBindBuffer(_bufferData->getBufferObject()->getTarget(),0);
 
-            textureObject->bind();
+            textureObject->bind(state);
             extensions->glTexBuffer(GL_TEXTURE_BUFFER, _internalFormat, glBufferObject->getGLObjectID());
         }
 
@@ -239,4 +219,3 @@ void TextureBuffer::computeInternalFormat() const
     if (getImage() ) computeInternalFormatWithImage(*getImage());
     else computeInternalFormatType();
 }
-

@@ -16,6 +16,7 @@
 #include <osgAnimation/RigTransformHardware>
 #include <osgAnimation/RigGeometry>
 #include <osgAnimation/BoneMapVisitor>
+#include <osgDB/ReadFile>
 #include <sstream>
 
 using namespace osgAnimation;
@@ -193,7 +194,6 @@ bool RigTransformHardware::buildPalette(const BoneMap& boneMap, const RigGeometr
     _bonePalette.clear();
     _boneNameToPalette.clear();
 
-    IndexWeightList::size_type maxBonePerVertex = 0;
     BoneNameCountMap boneNameCountMap;
 
     const VertexInfluenceMap &vertexInfluenceMap = *rig.getInfluenceMap();
@@ -211,7 +211,7 @@ bool RigTransformHardware::buildPalette(const BoneMap& boneMap, const RigGeometr
 
         if (bonename.empty())
         {
-            OSG_WARN << "RigTransformHardware::VertexInfluenceMap contains unamed bone IndexWeightList" << std::endl;
+            OSG_WARN << "RigTransformHardware::VertexInfluenceMap contains unnamed bone IndexWeightList" << std::endl;
         }
         BoneMap::const_iterator bmit = boneMap.find(bonename);
         if (bmit == boneMap.end() )
@@ -297,7 +297,7 @@ bool RigTransformHardware::init(RigGeometry& rig)
     osg::ref_ptr<osg::Shader> vertexshader;
     osg::ref_ptr<osg::StateSet> stateset = rig.getOrCreateStateSet();
 
-    //grab geom source program and vertex shader if _shader is not setted
+    //grab geom source program and vertex shader if _shader is not set
     if(!_shader.valid() && (program = (osg::Program*)stateset->getAttribute(osg::StateAttribute::PROGRAM)))
     {
         for(unsigned int i = 0; i<program->getNumShaders(); ++i)
@@ -312,11 +312,10 @@ bool RigTransformHardware::init(RigGeometry& rig)
         program = new osg::Program;
         program->setName("HardwareSkinning");
     }
-    //set default source if _shader is not user setted
+    //set default source if _shader is not user set
     if (!vertexshader.valid())
     {
-        if (!_shader.valid())
-            vertexshader = osg::Shader::readShaderFile(osg::Shader::VERTEX,"skinning.vert");
+        if (!_shader.valid()) vertexshader = osgDB::readRefShaderFile(osg::Shader::VERTEX,"skinning.vert");
         else vertexshader = _shader;
     }
 

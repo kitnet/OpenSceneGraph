@@ -84,10 +84,10 @@ struct MyRigTransformHardware : public osgAnimation::RigTransformHardware
             CommonProgram   = new osg::Program;
             CommonProgram->setName("HardwareSkinning");
 
-            //set default source if _shader is not user setted
+            //set default source if _shader is not user set
             if (!vertexshader.valid())
             {
-                    vertexshader = osg::Shader::readShaderFile(osg::Shader::VERTEX,"skinning.vert");
+                    vertexshader = osgDB::readRefShaderFile(osg::Shader::VERTEX,"skinning.vert");
             }
 
             if (!vertexshader.valid())

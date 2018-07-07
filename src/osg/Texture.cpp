@@ -245,10 +245,12 @@ Texture::TextureObject::~TextureObject()
     // OSG_NOTICE<<"Texture::TextureObject::~TextureObject() "<<this<<std::endl;
 }
 
-void Texture::TextureObject::bind()
+void Texture::TextureObject::bind(osg::State& state)
 {
     glBindTexture( _profile._target, _id);
     if (_set) _set->moveToBack(this);
+
+    if (state.getUseStateAttributeShaders()) state.setCurrentTextureFormat(_profile._internalFormat);
 }
 
 void Texture::TextureObject::release()
@@ -1222,12 +1224,21 @@ osg::ref_ptr<Texture::TextureObject> Texture::generateTextureObject(const Textur
 // Texture class implementation
 //
 Texture::Texture():
+#if 0
             _wrap_s(CLAMP),
             _wrap_t(CLAMP),
             _wrap_r(CLAMP),
+#else
+            _wrap_s(CLAMP_TO_EDGE),
+            _wrap_t(CLAMP_TO_EDGE),
+            _wrap_r(CLAMP_TO_EDGE),
+#endif
             _min_filter(LINEAR_MIPMAP_LINEAR), // trilinear
             _mag_filter(LINEAR),
             _maxAnisotropy(1.0f),
+            _minlod(0.0f),
+            _maxlod(-1.0f),
+            _lodbias(0.0f),
             _swizzle(GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA),
             _useHardwareMipMapGeneration(true),
             _unrefImageDataAfterApply(false),
@@ -1248,13 +1259,16 @@ Texture::Texture():
 }
 
 Texture::Texture(const Texture& text,const CopyOp& copyop):
-            StateAttribute(text,copyop),
+            TextureAttribute(text,copyop),
             _wrap_s(text._wrap_s),
             _wrap_t(text._wrap_t),
             _wrap_r(text._wrap_r),
             _min_filter(text._min_filter),
             _mag_filter(text._mag_filter),
             _maxAnisotropy(text._maxAnisotropy),
+            _minlod(text._minlod),
+            _maxlod(text._maxlod),
+            _lodbias(text._lodbias),
             _swizzle(text._swizzle),
             _useHardwareMipMapGeneration(text._useHardwareMipMapGeneration),
             _unrefImageDataAfterApply(text._unrefImageDataAfterApply),
@@ -1288,11 +1302,14 @@ int Texture::compareTexture(const Texture& rhs) const
     COMPARE_StateAttribute_Parameter(_min_filter)
     COMPARE_StateAttribute_Parameter(_mag_filter)
     COMPARE_StateAttribute_Parameter(_maxAnisotropy)
+    COMPARE_StateAttribute_Parameter(_minlod)
+    COMPARE_StateAttribute_Parameter(_maxlod)
+    COMPARE_StateAttribute_Parameter(_lodbias)
     COMPARE_StateAttribute_Parameter(_swizzle)
     COMPARE_StateAttribute_Parameter(_useHardwareMipMapGeneration)
     COMPARE_StateAttribute_Parameter(_internalFormatMode)
 
-    // only compare _internalFomat is it has alrady been set in both lhs, and rhs
+    // only compare _internalFomat is it has already been set in both lhs, and rhs
     if (_internalFormat!=0 && rhs._internalFormat!=0)
     {
         COMPARE_StateAttribute_Parameter(_internalFormat)
@@ -1336,7 +1353,6 @@ void Texture::setWrap(WrapParameter which, WrapMode wrap)
         case WRAP_R : _wrap_r = wrap; dirtyTextureParameters(); break;
         default : OSG_WARN<<"Error: invalid 'which' passed Texture::setWrap("<<(unsigned int)which<<","<<(unsigned int)wrap<<")"<<std::endl; break;
     }
-
 }
 
 
@@ -1382,15 +1398,31 @@ void Texture::setMaxAnisotropy(float anis)
     }
 }
 
-void Texture::bindToImageUnit(unsigned int unit, GLenum access, GLenum format, int level, bool layered, int layer)
+void Texture::setMinLOD(float anis)
 {
-    _imageAttachment.unit = unit;
-    _imageAttachment.level = level;
-    _imageAttachment.layered = layered ? GL_TRUE : GL_FALSE;
-    _imageAttachment.layer = layer;
-    _imageAttachment.access = access;
-    _imageAttachment.format = format;
-    dirtyTextureParameters();
+    if (_minlod!=anis)
+    {
+        _minlod = anis;
+        dirtyTextureParameters();
+    }
+}
+
+void Texture::setMaxLOD(float anis)
+{
+    if (_maxlod!=anis)
+    {
+        _maxlod = anis;
+        dirtyTextureParameters();
+    }
+}
+
+void Texture::setLODBias(float anis)
+{
+    if (_lodbias!=anis)
+    {
+        _lodbias = anis;
+        dirtyTextureParameters();
+    }
 }
 
 /** Force a recompile on next apply() of associated OpenGL texture objects.*/
@@ -1971,7 +2003,7 @@ void Texture::applyTexParameters(GLenum target, State& state) const
     // integer textures are not supported by the shadow
     // GL_TEXTURE_1D_ARRAY_EXT could be included in the check below but its not yet implemented in OSG
     if (extensions->isShadowSupported &&
-        (target == GL_TEXTURE_2D || target == GL_TEXTURE_1D || target == GL_TEXTURE_RECTANGLE || target == GL_TEXTURE_CUBE_MAP || target == GL_TEXTURE_2D_ARRAY_EXT ) &&
+        (target == GL_TEXTURE_2D || target == GL_TEXTURE_1D || target == GL_TEXTURE_RECTANGLE || target == GL_TEXTURE_CUBE_MAP || target == GL_TEXTURE_2D_ARRAY ) &&
         _internalFormatType != SIGNED_INTEGER && _internalFormatType != UNSIGNED_INTEGER)
     {
         if (_use_shadow_comparison)
@@ -1994,19 +2026,14 @@ void Texture::applyTexParameters(GLenum target, State& state) const
             glTexParameteri(target, GL_TEXTURE_COMPARE_MODE_ARB, GL_NONE);
         }
     }
-
-    // Apply image load/store attributes
-    if (extensions->isBindImageTextureSupported() && _imageAttachment.access!=0)
+    // if range is valid
+    if( _maxlod - _minlod >= 0)
     {
-        TextureObject* tobj = getTextureObject(contextID);
-        if (tobj)
-        {
-            extensions->glBindImageTexture(
-                _imageAttachment.unit, tobj->id(), _imageAttachment.level,
-                _imageAttachment.layered, _imageAttachment.layer, _imageAttachment.access,
-                _imageAttachment.format!=0 ? _imageAttachment.format : _internalFormat);
-        }
+        glTexParameterf(target, GL_TEXTURE_MIN_LOD, _minlod);
+        glTexParameterf(target, GL_TEXTURE_MAX_LOD, _maxlod);
     }
+
+    glTexParameterf(target, GL_TEXTURE_LOD_BIAS, _lodbias);
 
     getTextureParameterDirty(state.getContextID()) = false;
 
@@ -2778,7 +2805,7 @@ void Texture::generateMipmap(State& state) const
     // FrameBufferObjects are required for glGenerateMipmap
     if (ext->isFrameBufferObjectSupported && ext->glGenerateMipmap)
     {
-        textureObject->bind();
+        textureObject->bind(state);
         ext->glGenerateMipmap(textureObject->target());
 
         // inform state that this texture is the current one bound.

@@ -262,8 +262,6 @@ public:
 
     osg::Geometry* multiPointToDrawable(OGRMultiPoint* mpoint) const
     {
-        osg::Geometry* geom = new osg::Geometry;
-
         osg::Geometry* pointGeom = new osg::Geometry();
         osg::Vec3Array* vertices = new osg::Vec3Array();
 
@@ -286,7 +284,7 @@ public:
 
         if (pointGeom->getVertexArray())
         {
-            OSG_INFO << "osgOgrFeature::multiPointToDrawable " << geom->getVertexArray()->getNumElements() << " vertexes"<< std::endl;
+            OSG_INFO << "osgOgrFeature::multiPointToDrawable " << pointGeom->getVertexArray()->getNumElements() << " vertices"<< std::endl;
         }
 
         return pointGeom;
@@ -340,7 +338,7 @@ public:
 
         if (geom->getVertexArray())
         {
-            OSG_INFO << "osgOgrFeature::multiPolygonToDrawable " << geom->getVertexArray()->getNumElements() << " vertexes"<< std::endl;
+            OSG_INFO << "osgOgrFeature::multiPolygonToDrawable " << geom->getVertexArray()->getNumElements() << " vertices"<< std::endl;
         }
 
         return geom;

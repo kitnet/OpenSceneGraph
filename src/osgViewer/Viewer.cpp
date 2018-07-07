@@ -16,6 +16,7 @@
 
 #include <osg/DeleteHandler>
 #include <osg/io_utils>
+#include <osg/os_utils>
 #include <osg/TextureRectangle>
 #include <osg/TextureCubeMap>
 
@@ -33,8 +34,8 @@
 #include <osgViewer/config/SphericalDisplay>
 #include <osgViewer/config/PanoramicSphericalDisplay>
 #include <osgViewer/config/WoWVxDisplay>
+#include <osgViewer/config/SingleWindow>
 
-#include <osg/EnvVar>
 
 #include <sstream>
 #include <string.h>
@@ -63,6 +64,7 @@ Viewer::Viewer(osg::ArgumentParser& arguments)
     arguments.getApplicationUsage()->addCommandLineOption("--clear-color <color>","Set the background color of the viewer in the form \"r,g,b[,a]\".");
     arguments.getApplicationUsage()->addCommandLineOption("--screen <num>","Set the screen to use when multiple screens are present.");
     arguments.getApplicationUsage()->addCommandLineOption("--window <x y w h>","Set the position (x,y) and size (w,h) of the viewer window.");
+    arguments.getApplicationUsage()->addCommandLineOption("--borderless-window <x y w h>","Set the position (x,y) and size (w,h) of a borderless viewer window.");
 
     arguments.getApplicationUsage()->addCommandLineOption("--run-on-demand","Set the run methods frame rate management to only rendering frames when required.");
     arguments.getApplicationUsage()->addCommandLineOption("--run-continuous","Set the run methods frame rate management to rendering frames continuously.");
@@ -136,7 +138,14 @@ Viewer::Viewer(osg::ArgumentParser& arguments)
     bool ss3d = false;
     bool wowvx20 = false;
     bool wowvx42 = false;
-    if ((wowvx20=arguments.read("--wowvx-20")) || (wowvx42=arguments.read("--wowvx-42")) || arguments.read("--wowvx"))
+
+    if (arguments.read("--borderless-window",x,y,width,height))
+    {
+        osg::ref_ptr<osgViewer::SingleWindow> sw = new osgViewer::SingleWindow(x, y, width, height, screenNum);
+        sw->setWindowDecoration(false);
+        apply(sw.get());
+    }
+    else if ((wowvx20=arguments.read("--wowvx-20")) || (wowvx42=arguments.read("--wowvx-42")) || arguments.read("--wowvx"))
     {
         osg::ref_ptr<WoWVxDisplay> wow = new WoWVxDisplay;
 
@@ -510,7 +519,13 @@ void Viewer::realize()
             int x = -1, y = -1, width = -1, height = -1;
             osg::getEnvVar("OSG_WINDOW", x, y, width, height);
 
-            if (width>0 && height>0)
+            if (osg::getEnvVar("OSG_BORDERLESS_WINDOW", x, y, width, height))
+            {
+                osg::ref_ptr<osgViewer::SingleWindow> sw = new osgViewer::SingleWindow(x, y, width, height, screenNum);
+                sw->setWindowDecoration(false);
+                apply(sw.get());
+            }
+            else if (width>0 && height>0)
             {
                 if (screenNum>=0) setUpViewInWindow(x, y, width, height, screenNum);
                 else setUpViewInWindow(x,y,width,height);
@@ -1068,13 +1083,13 @@ void Viewer::eventTraversal()
             osg::NodeVisitor::TraversalMode tm = _eventVisitor->getTraversalMode();
             _eventVisitor->setTraversalMode(osg::NodeVisitor::TRAVERSE_NONE);
 
-            if (_camera.valid() && _camera->getEventCallback()) _camera->accept(*_eventVisitor);
+            if (_camera.valid()) _camera->accept(*_eventVisitor);
 
             for(unsigned int i=0; i<getNumSlaves(); ++i)
             {
                 osg::View::Slave& slave = getSlave(i);
                 osg::Camera* camera = slave._camera.get();
-                if (camera && slave._useMastersSceneData && camera->getEventCallback())
+                if (camera && slave._useMastersSceneData)
                 {
                     camera->accept(*_eventVisitor);
                 }
@@ -1174,13 +1189,13 @@ void Viewer::updateTraversal()
         osg::NodeVisitor::TraversalMode tm = _updateVisitor->getTraversalMode();
         _updateVisitor->setTraversalMode(osg::NodeVisitor::TRAVERSE_NONE);
 
-        if (_camera.valid() && _camera->getUpdateCallback()) _camera->accept(*_updateVisitor);
+        if (_camera.valid()) _camera->accept(*_updateVisitor);
 
         for(unsigned int i=0; i<getNumSlaves(); ++i)
         {
             osg::View::Slave& slave = getSlave(i);
             osg::Camera* camera = slave._camera.get();
-            if (camera && slave._useMastersSceneData && camera->getUpdateCallback())
+            if (camera && slave._useMastersSceneData)
             {
                 camera->accept(*_updateVisitor);
             }
